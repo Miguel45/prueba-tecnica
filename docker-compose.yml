@@ -1,0 +1,54 @@
+version: '3.8'
+services:
+  mosquitto:
+    image: eclipse-mosquitto:2
+    container_name: mosquitto
+    ports:
+      - "1883:1883"
+    volumes:
+      - ./mosquitto.conf:/mosquitto/config/mosquitto.conf
+      - mosquitto_data:/mosquitto/data
+      - mosquitto_log:/mosquitto/log
+
+  publisher:
+    build: ./publisher
+    container_name: publisher
+    depends_on:
+      - mosquitto
+    environment:
+      MOSQUITTO_URL: "mqtt://mosquitto"
+      MOSQUITTO_PUBLISHER_TOPIC: "random_number"
+      CRON_TIME: "*/5 * * * * *"
+
+  subscriber:
+    build: ./subscriber
+    container_name: subscriber
+    depends_on:
+      - mosquitto
+      - mysql
+    environment:
+      MOSQUITTO_URL: "mqtt://mosquitto"
+      MOSQUITTO_PUBLISHER_TOPIC: "random_number"
+      MYSQL_HOST: "mysql"
+      MYSQL_USER: "user"
+      MYSQL_PASSWORD: "password"
+      MYSQL_DATABASE: "mydb"
+
+  mysql:
+    image: mysql:8
+    container_name: mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: "rootpassword"
+      MYSQL_DATABASE: "mydb"
+      MYSQL_USER: "user"
+      MYSQL_PASSWORD: "password"
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+
+volumes:
+  mosquitto_data:
+  mosquitto_log:
+  mysql_data:
